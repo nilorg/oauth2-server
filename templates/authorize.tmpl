@@ -1,0 +1,22 @@
+{{ define "authorize.tmpl" }}
+<html>
+<h1>
+    {{ .title }}
+    <p>是否愿意代表您执行操作</p>
+    <form method="POST">
+        <input name="redirect_uri" type="text" value="{{ .redirect_uri }}" />
+        <input name="response_type" type="text" value="{{ .response_type }}" />
+        <input name="state" type="text" value="{{ .state }}" />
+        <input name="scope" type="text" value="{{ .scope }}" />
+        <button type="submit">授权</button>
+        <button onclick="close_window()" type="button">取消</button>
+    </form>
+</h1>
+<script>
+    function close_window() {
+        window.close();
+    }
+</script>
+
+</html>
+{{ end }}
