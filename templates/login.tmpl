@@ -2,7 +2,9 @@
 <html>
 <h1>
     {{ .title }}
-    {{ .message }}
+    {{ if .error }}
+        <p>{{ .error }}</p>
+    {{ end }}
     <form method="POST">
         <input name="username" placeholder="用户名" />
         <br />

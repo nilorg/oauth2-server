@@ -126,6 +126,7 @@ func main() {
 		return
 	}
 	oauth2Server.Init()
+
 	store := cookie.NewStore([]byte("secret"))
 	r := gin.Default()
 	r.Use(sessions.Sessions("mysession", store))
@@ -135,29 +136,31 @@ func main() {
 		oauth2Group.GET("/login", func(ctx *gin.Context) {
 			ctx.HTML(http.StatusOK, "login.tmpl", gin.H{
 				"title": "登录",
+				"error": GetFlashMessage(ctx),
 			})
 		})
 		oauth2Group.POST("/login", func(ctx *gin.Context) {
 			username := ctx.PostForm("username")
 			password := ctx.PostForm("password")
-			if username == "haha" && password == "haha" {
-				session := sessions.Default(ctx)
-				session.Set("oauth2_current_user", "haha")
-				session.Save()
 
-				//uri, _ := url.Parse(ctx.Query("login_redirect_uri"))
-				//query := ctx.Request.URL.Query()
-				//query.Del("login_redirect_uri")
-				//uri.RawQuery = query.Encode()
-				//ctx.Redirect(302, uri.String())
-
-				ctx.Redirect(302, ctx.Query("login_redirect_uri"))
-			} else {
-				ctx.HTML(http.StatusOK, "login.tmpl", gin.H{
-					"message": "登录错误",
-					"title":   "登录",
-				})
+			user := &models.User{}
+			err := db.Where("username = ?", username).First(user).Error
+			if err != nil {
+				_ = SetFlashMessage(ctx, err.Error())
+				ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+				return
 			}
+			if user.Username != username || user.Password != password {
+				_ = SetFlashMessage(ctx, "账号密码不正确")
+				ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+				return
+			}
+
+			session := sessions.Default(ctx)
+			session.Set("oauth2_current_user", "haha")
+			_ = session.Save()
+
+			ctx.Redirect(302, ctx.Query("login_redirect_uri"))
 		})
 		oauth2Group.GET("/authorize", func(ctx *gin.Context) {
 			clientID := ctx.Query("client_id")
@@ -182,4 +185,24 @@ func main() {
 		})
 	}
 	r.Run() // listen and serve on 0.0.0.0:8080
+}
+
+// SetFlashMessage sets a flash message,
+func SetFlashMessage(ctx *gin.Context, msg string) error {
+	session := sessions.Default(ctx)
+	session.Set("flash_message", msg)
+	return session.Save()
+}
+
+// GetFlashMessage returns the first flash message
+func GetFlashMessage(ctx *gin.Context) string {
+	session := sessions.Default(ctx)
+	value := session.Get("flash_message")
+	if value != nil {
+		session.Delete("flash_message")
+		_ = session.Save()
+		return value.(string)
+	} else {
+		return ""
+	}
 }
