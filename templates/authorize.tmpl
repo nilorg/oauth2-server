@@ -2,6 +2,9 @@
 <html>
 <h1>
     {{ .title }}
+    {{ if .error }}
+        <p>{{ .error }}</p>
+    {{ end }}
     <p>是否愿意代表您执行操作</p>
     <form method="POST">
         <button type="submit">授权</button>
