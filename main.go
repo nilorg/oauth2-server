@@ -12,6 +12,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/nilorg/oauth2"
 	"github.com/nilorg/oauth2-server/dao"
+	"github.com/nilorg/oauth2-server/middleware"
 	"github.com/nilorg/oauth2-server/models"
 	"golang.org/x/net/publicsuffix"
 )
@@ -50,7 +51,7 @@ func main() {
 		}
 		return
 	}
-	oauth2Server.VerifyPassword = func(username, password string, scope []string) (err error) {
+	oauth2Server.VerifyPassword = func(username, password string) (openID string, err error) {
 		var user *models.User
 		user, err = dao.User.SelectByUsername(username)
 		if err != nil {
@@ -63,17 +64,8 @@ func main() {
 		// scope 额外处理,这里不做处理
 		return
 	}
-	oauth2Server.VerifyCredentialsScope = func(clientID string, scope []string) (err error) {
-		// var client *models.Client
-		// client, err = dao.Client.SelectByID(clientID)
-		// if err != nil {
-		// 	err = oauth2.ErrAccessDenied
-		// 	return
-		// }
-		// scope 额外处理,这里不做处理
-		return
-	}
-	oauth2Server.VerifyAuthorization = func(clientID, redirectUri string, scope []string) (err error) {
+
+	oauth2Server.VerifyAuthorization = func(clientID, redirectUri string) (err error) {
 		// var client *models.Client
 		// client, err = dao.Client.SelectByID(clientID)
 		// if err != nil {
@@ -84,7 +76,7 @@ func main() {
 		// scope 额外处理,这里不做处理
 		return
 	}
-	oauth2Server.GenerateCode = func(clientID, redirectUri string, scope []string) (code string, err error) {
+	oauth2Server.GenerateCode = func(clientID, openID, redirectURI string, scope []string) (code string, err error) {
 		// var client models.Client
 		// client, err = dao.Client.SelectByID(clientID)
 		// if err != nil {
@@ -96,20 +88,20 @@ func main() {
 		code = oauth2.RandomCode()
 		value := &oauth2.CodeValue{
 			ClientID:    clientID,
-			RedirectUri: redirectUri,
+			RedirectURI: redirectURI,
 			Scope:       scope,
 		}
 		redisClient.Set(fmt.Sprintf("oauth2_code_%s", code), value, time.Minute)
 		return
 	}
-	oauth2Server.VerifyCode = func(code, clientID, redirectUri string) (value *oauth2.CodeValue, err error) {
+	oauth2Server.VerifyCode = func(code, clientID, redirectURI string) (value *oauth2.CodeValue, err error) {
 		value = &oauth2.CodeValue{}
 		err = redisClient.Get(fmt.Sprintf("oauth2_code_%s", code)).Scan(value)
 		if err != nil {
 			err = oauth2.ErrAccessDenied
 			return
 		}
-		if value.ClientID != clientID || value.RedirectUri != redirectUri {
+		if value.ClientID != clientID || value.RedirectURI != redirectURI {
 			err = oauth2.ErrAccessDenied
 			return
 		}
@@ -152,7 +144,7 @@ func main() {
 
 			ctx.Redirect(302, ctx.Query("login_redirect_uri"))
 		})
-		oauth2Group.GET("/authorize", func(ctx *gin.Context) {
+		oauth2Group.GET("/authorize", middleware.AuthRequired, func(ctx *gin.Context) {
 			clientID := ctx.Query("client_id")
 			var err error
 			var client *models.Client
@@ -164,9 +156,9 @@ func main() {
 			}
 			uri := *ctx.Request.URL
 			query := uri.Query()
-			queryRedirectURI := query.Get(oauth2.RedirectUriKey)
+			queryRedirectURI := query.Get(oauth2.RedirectURIKey)
 			if queryRedirectURI == "" {
-				query.Set(oauth2.RedirectUriKey, client.RedirectURI)
+				query.Set(oauth2.RedirectURIKey, client.RedirectURI)
 				uri.RawQuery = query.Encode()
 			} else {
 				// 判断重定向顶级域名是否和数据库中的顶级域名相等
@@ -192,7 +184,7 @@ func main() {
 			}
 
 			session := sessions.Default(ctx)
-			currentAccount := session.Get("oauth2_current_user")
+			currentAccount := session.Get("current_user")
 			if currentAccount == nil {
 				redirectURI, _ := url.Parse("/oauth2/login")
 				redirectURIQuery := url.Values{}
@@ -206,9 +198,13 @@ func main() {
 				})
 			}
 		})
-		oauth2Group.POST("/authorize", func(ctx *gin.Context) {
+		oauth2Group.POST("/authorize", middleware.AuthRequired, func(ctx *gin.Context) {
+			session := sessions.Default(ctx)
+			currentAccount := session.Get("current_user")
+			rctx := oauth2.NewOpenIDContext(ctx.Request.Context(), currentAccount.(string))
+			req := ctx.Request.WithContext(rctx)
 			// 模拟请求客户端
-			oauth2Server.HandleAuthorize(ctx.Writer, ctx.Request)
+			oauth2Server.HandleAuthorize(ctx.Writer, req)
 		})
 	}
 	r.Run() // listen and serve on 0.0.0.0:8080
