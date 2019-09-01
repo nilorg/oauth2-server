@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -10,10 +11,16 @@ import (
 	"github.com/nilorg/oauth2-server/dao"
 	"github.com/nilorg/oauth2-server/models"
 	"github.com/nilorg/oauth2-server/module/store"
+	"github.com/nilorg/oauth2-server/utils"
 )
 
 var (
 	oauth2Server *oauth2.Server
+	sourceScope  = []string{
+		"read_write",
+		"read",
+		"write",
+	}
 )
 
 func init() {
@@ -41,33 +48,26 @@ func init() {
 		if user.Username != username || user.Password != password {
 			err = oauth2.ErrAccessDenied
 		}
-		// scope 额外处理,这里不做处理
 		return
 	}
 
-	oauth2Server.VerifyAuthorization = func(clientID, redirectUri string) (err error) {
-		// var client *models.Client
-		// client, err = dao.Client.SelectByID(clientID)
-		// if err != nil {
-		// 	err = oauth2.ErrAccessDenied
-		// 	return
-		// }
-		// redirectUri 额外处理,这里不做处理
-		// scope 额外处理,这里不做处理
+	oauth2Server.VerifyRedirectURI = func(clientID, redirectURI string) (err error) {
+		var client *models.Client
+		client, err = dao.Client.SelectByID(clientID)
+		if err != nil {
+			err = oauth2.ErrAccessDenied
+			return
+		}
+		if strings.Index(redirectURI, client.RedirectURI) == -1 {
+			err = oauth2.ErrInvalidRedirectURI
+		}
 		return
 	}
 	oauth2Server.GenerateCode = func(clientID, openID, redirectURI string, scope []string) (code string, err error) {
-		// var client models.Client
-		// client, err = dao.Client.SelectByID(clientID)
-		// if err != nil {
-		// 	err = oauth2.ErrAccessDenied
-		// 	return
-		// }
-		// redirectUri 额外处理,这里不做处理
-		// scope 额外处理,这里不做处理
 		code = oauth2.RandomCode()
 		value := &oauth2.CodeValue{
 			ClientID:    clientID,
+			OpenID:      openID,
 			RedirectURI: redirectURI,
 			Scope:       scope,
 		}
@@ -85,24 +85,29 @@ func init() {
 			err = oauth2.ErrAccessDenied
 			return
 		}
-		// scope 额外处理,这里不做处理
+		if !utils.ScopeIsEqual(value.Scope, sourceScope) {
+			err = oauth2.ErrInvalidScope
+		}
 		return
 	}
 	oauth2Server.VerifyScope = func(scope []string) (err error) {
+		if !utils.ScopeIsSubset(scope, sourceScope) {
+			err = oauth2.ErrInvalidScope
+		}
 		return
 	}
 	oauth2Server.Init()
 
 }
 
-// SetErrorMessage sets a error message,
+// SetErrorMessage set a error message
 func SetErrorMessage(ctx *gin.Context, msg string) error {
 	session := sessions.Default(ctx)
 	session.Set("error_message", msg)
 	return session.Save()
 }
 
-// GetErrorMessage returns the first error message
+// GetErrorMessage return the first error message
 func GetErrorMessage(ctx *gin.Context) string {
 	session := sessions.Default(ctx)
 	value := session.Get("error_message")

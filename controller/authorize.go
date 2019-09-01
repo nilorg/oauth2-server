@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
+// AuthorizePage 授权页面
 func AuthorizePage(ctx *gin.Context) {
 	errMsg := GetErrorMessage(ctx)
 	if errMsg != "" {
@@ -63,6 +64,7 @@ func AuthorizePage(ctx *gin.Context) {
 
 }
 
+// Authorize authorize post
 func Authorize(ctx *gin.Context) {
 	session := sessions.Default(ctx)
 	currentAccount := session.Get("current_user")

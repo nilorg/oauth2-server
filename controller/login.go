@@ -8,6 +8,7 @@ import (
 	"github.com/nilorg/oauth2-server/dao"
 )
 
+// LoginPage 登录页面
 func LoginPage(ctx *gin.Context) {
 	ctx.HTML(http.StatusOK, "login.tmpl", gin.H{
 		"title": "登录",
@@ -15,6 +16,7 @@ func LoginPage(ctx *gin.Context) {
 	})
 }
 
+// Login login post
 func Login(ctx *gin.Context) {
 	username := ctx.PostForm("username")
 	password := ctx.PostForm("password")
