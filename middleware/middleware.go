@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/gin-contrib/sessions"
@@ -23,9 +22,6 @@ func AuthRequired(ctx *gin.Context) {
 	session := sessions.Default(ctx)
 	currentAccount := session.Get("current_user")
 	if currentAccount == nil {
-
-		fmt.Println("中间件.....用户为空....")
-
 		uri := *ctx.Request.URL
 		redirectURI, _ := url.Parse("/oauth2/login")
 		redirectURIQuery := url.Values{}
