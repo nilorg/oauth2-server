@@ -16,9 +16,10 @@ require (
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/nilorg/oauth2 v0.0.0
 	github.com/stretchr/testify v1.4.0 // indirect
-	github.com/ugorji/go/codec v1.1.7 // indirect
+	github.com/ugorji/go v1.1.7 // indirect
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	golang.org/x/text v0.3.2 // indirect
+	gopkg.in/redis.v5 v5.2.9 // indirect
 )
 
 replace github.com/nilorg/oauth2 => ../oauth2

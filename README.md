@@ -6,5 +6,5 @@ http://localhost:8080/oauth2/authorize?client_id=oauth2_client&redirect_uri=http
 ```
 
 ```bash
-http://localhost:8080/oauth2/authorize?client_id=oauth2_client&response_type=code&state=somestate&scope=read_write&redirect_uri=http%3a%2f%2flocalhost%2fcallback
+http://localhost:8080/oauth2/authorize?client_id=oauth2_client&redirect_uri=http://localhost/callback&response_type=token&state=somestate&scope=read_write
 ```

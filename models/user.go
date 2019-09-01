@@ -1,7 +1,16 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"encoding/gob"
 
+	"github.com/jinzhu/gorm"
+)
+
+func init() {
+	gob.Register(&User{})
+}
+
+// User ...
 type User struct {
 	gorm.Model
 	Username string `json:"username"`
