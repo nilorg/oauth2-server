@@ -33,35 +33,40 @@ func AuthorizePage(ctx *gin.Context) {
 		ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
 		return
 	}
-	uri := *ctx.Request.URL
-	query := uri.Query()
+	// uri := *ctx.Request.URL
+	// query := uri.Query()
+	query := ctx.Request.URL.Query()
 	queryRedirectURI := query.Get(oauth2.RedirectURIKey)
 	if queryRedirectURI == "" {
-		query.Set(oauth2.RedirectURIKey, client.RedirectURI)
-		uri.RawQuery = query.Encode()
-	} else {
-		// 判断重定向顶级域名是否和数据库中的顶级域名相等
-		var qrLevelDomain string
-		qrLevelDomain, err = publicsuffix.EffectiveTLDPlusOne(queryRedirectURI)
-		if err != nil {
-			_ = SetErrorMessage(ctx, err.Error())
-			ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
-			return
-		}
-		var dbLevelDomain string
-		dbLevelDomain, err = publicsuffix.EffectiveTLDPlusOne(client.RedirectURI)
-		if err != nil {
-			_ = SetErrorMessage(ctx, err.Error())
-			ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
-			return
-		}
-		if qrLevelDomain != dbLevelDomain {
-			_ = SetErrorMessage(ctx, "重定向域名不符合后台配置规范")
-			ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
-			return
-		}
+		// query.Set(oauth2.RedirectURIKey, client.RedirectURI)
+		// uri.RawQuery = query.Encode()
+		queryRedirectURI = client.RedirectURI
 	}
-
+	// 判断重定向顶级域名是否和数据库中的顶级域名相等
+	var qrLevelDomain string
+	qrLevelDomain, err = publicsuffix.EffectiveTLDPlusOne(queryRedirectURI)
+	if err != nil {
+		_ = SetErrorMessage(ctx, err.Error())
+		ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+		return
+	}
+	var dbLevelDomain string
+	dbLevelDomain, err = publicsuffix.EffectiveTLDPlusOne(client.RedirectURI)
+	if err != nil {
+		_ = SetErrorMessage(ctx, err.Error())
+		ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+		return
+	}
+	if qrLevelDomain != dbLevelDomain {
+		_ = SetErrorMessage(ctx, "重定向域名不符合后台配置规范")
+		ctx.Redirect(http.StatusFound, ctx.Request.RequestURI)
+		return
+	}
+	ctx.HTML(http.StatusOK, "authorize.tmpl", gin.H{
+		"title": "授权页面",
+		"error": nil,
+	})
+	return
 }
 
 // Authorize authorize post
